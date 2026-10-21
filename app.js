@@ -16,6 +16,15 @@ document.addEventListener('DOMContentLoaded', () => {
   const dropOverlay = document.getElementById('drop-overlay');
   const emptyState = document.getElementById('empty-state');
   const inspectorPanel = document.getElementById('inspector-panel');
+  const sidebar = document.getElementById('sidebar-left');
+  const sidebarToggle = document.getElementById('btn-toggle-sidebar');
+
+  sidebarToggle.addEventListener('click', () => {
+    const isOpen = sidebar.classList.toggle('mobile-open');
+    graphContainer.classList.toggle('sidebar-open', isOpen);
+    sidebarToggle.setAttribute('aria-expanded', String(isOpen));
+    sidebarToggle.textContent = isOpen ? '✕ Cerrar' : '☰ Filtros';
+  });
 
   // Inicializar el Grafo
   graph = new ObsidianGraph(graphContainer, (selectedNode) => {
