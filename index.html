@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Linaje Qlik - Grafo de Dependencias & Obsidian Brain</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div id="app-container">
+    <!-- Barra Superior -->
+    <header class="top-nav">
+      <div class="nav-brand">
+        <div class="brand-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M12 3v6m0 6v6M3 12h6m6 0h6"></path>
+            <circle cx="12" cy="3" r="1.5"></circle>
+            <circle cx="12" cy="21" r="1.5"></circle>
+            <circle cx="3" cy="12" r="1.5"></circle>
+            <circle cx="21" cy="12" r="1.5"></circle>
+          </svg>
+        </div>
+        <div>
+          <span class="brand-name">Linaje</span>
+          <span class="brand-tag">Qlik Brain</span>
+        </div>
+      </div>
+
+      <div style="flex: 1; max-width: 320px; margin: 0 16px;">
+        <input type="text" id="project-name-input" class="search-input" value="Mi Proyecto Qlik" title="Nombre del Proyecto" placeholder="Nombre del Proyecto...">
+      </div>
+
+      <div class="nav-actions">
+        <!-- Inputs de archivo ocultos -->
+        <input type="file" id="file-folder-input" webkitdirectory directory multiple style="display: none;">
+        <input type="file" id="file-zip-input" multiple accept=".zip,.qvs,.txt,.json,.qvf,.csv" style="display: none;">
+        <input type="file" id="file-project-input" accept=".linaje,.json" style="display: none;">
+
+        <button id="btn-upload-folder" class="btn" title="Cargar carpeta con scripts o subcarpetas">
+          📁 Carpeta Qlik
+        </button>
+        <button id="btn-upload-zip" class="btn" title="Cargar ZIP, script o CSV de modelo Qlik">
+          📦 ZIP / CSV
+        </button>
+        <button id="btn-load-demo" class="btn btn-ghost" title="Cargar ecosistema de ejemplo">
+          ⚡ Demo
+        </button>
+
+        <div style="width: 1px; height: 24px; background: var(--border-subtle); margin: 0 4px;"></div>
+
+        <button id="btn-open-table" class="btn btn-ghost" title="Ver matriz completa de dependencias">
+          📋 Matriz
+        </button>
+        <button id="btn-import-project" class="btn" title="Cargar proyecto previamente guardado">
+          📂 Abrir Proyecto
+        </button>
+        <button id="btn-export-project" class="btn btn-primary" title="Guardar proyecto como archivo .linaje">
+          💾 Guardar Proyecto
+        </button>
+      </div>
+    </header>
+
+    <!-- Espacio Principal de Trabajo -->
+    <main class="workspace">
+      <!-- Barra Lateral Izquierda (Explorador & Controles) -->
+      <aside class="sidebar-left" id="sidebar-left">
+        <div class="sidebar-tabs">
+          <div class="sidebar-tab active" id="tab-explore">Explorador</div>
+          <div class="sidebar-tab" id="tab-fields">🔬 Campos</div>
+          <div class="sidebar-tab" id="tab-physics">Física</div>
+        </div>
+
+        <!-- Vista 1: Explorador -->
+        <div class="sidebar-content" id="view-explore">
+          <!-- Estadísticas Generales -->
+          <div class="stats-grid">
+            <div class="stat-card">
+              <span class="stat-value" id="stat-apps" style="color: var(--color-app)">0</span>
+              <span class="stat-label">Apps Qlik</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-value" id="stat-datasets" style="color: #cbd5e1">0</span>
+              <span class="stat-label">Datasets</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-value" id="stat-stg" style="color: var(--color-stg)">0</span>
+              <span class="stat-label">STGs</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-value" id="stat-data" style="color: var(--color-data)">0</span>
+              <span class="stat-label">DATAs</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-value" id="stat-links" style="color: #93c5fd">0</span>
+              <span class="stat-label">Enlaces</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-value" id="stat-unconsumed" style="color: var(--color-danger)">0</span>
+              <span class="stat-label">Sin Consumo</span>
+            </div>
+            <div class="stat-card" style="border-color: rgba(251, 191, 36, 0.3);">
+              <span class="stat-value" id="stat-fields" style="color: #fbbf24">0</span>
+              <span class="stat-label">Campos Únicos</span>
+            </div>
+          </div>
+
+          <!-- Buscador de Nodos -->
+          <div class="search-box">
+            <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input type="text" id="search-input" class="search-input" placeholder="Buscar App, STG, DATA...">
+          </div>
+
+          <!-- Filtros de Entidades -->
+          <div class="filter-group">
+            <span class="filter-title">Filtrar por Tipo</span>
+            <div class="filter-chip" id="filter-chip-app">
+              <div class="chip-left">
+                <span class="color-dot dot-app"></span>
+                <span>Apps Qlik</span>
+              </div>
+              <span class="chip-count" id="count-chip-app">0</span>
+            </div>
+            <div class="filter-chip" id="filter-chip-stg">
+              <div class="chip-left">
+                <span class="color-dot dot-stg"></span>
+                <span>STG (Staging)</span>
+              </div>
+              <span class="chip-count" id="count-chip-stg">0</span>
+            </div>
+            <div class="filter-chip" id="filter-chip-data">
+              <div class="chip-left">
+                <span class="color-dot dot-data"></span>
+                <span>DATA (Data Marts)</span>
+              </div>
+              <span class="chip-count" id="count-chip-data">0</span>
+            </div>
+            <div class="filter-chip" id="filter-chip-other">
+              <div class="chip-left">
+                <span class="color-dot dot-other"></span>
+                <span>Fuentes Externas</span>
+              </div>
+              <span class="chip-count" id="count-chip-other">0</span>
+            </div>
+          </div>
+
+          <div class="filter-group" id="app-filter-group">
+            <div class="app-filter-header">
+              <span class="filter-title">Mostrar apps</span>
+              <span id="app-filter-count" class="chip-count">Todas</span>
+            </div>
+            <div class="app-filter-actions">
+              <button id="btn-apps-all" class="btn btn-ghost" type="button">Todas</button>
+              <button id="btn-apps-none" class="btn btn-ghost" type="button">Ninguna</button>
+            </div>
+            <input id="app-filter-search" class="app-filter-search" type="search" placeholder="Buscar app..." autocomplete="off">
+            <div id="app-checklist" class="app-checklist">
+              <p class="empty-text">Carga un modelo o scripts para listar las apps.</p>
+            </div>
+          </div>
+
+          <!-- Filtro Nodos Huérfanos -->
+          <div class="filter-group">
+            <label style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; cursor: pointer;">
+              <input type="checkbox" id="filter-hide-orphans" class="slider-input">
+              <span>Ocultar recursos sin conexiones</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Vista 2: Campos (Column-Level Lineage) -->
+        <div class="sidebar-content" id="view-fields" style="display: none;">
+          <!-- Buscador de Campos -->
+          <div class="search-box">
+            <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input type="text" id="field-search-input" class="search-input" placeholder="Buscar campo o columna...">
+          </div>
+
+          <div id="field-tracking-banner" style="display:none; background: rgba(251,191,36,0.1); border: 1px solid rgba(251,191,36,0.3); border-radius:8px; padding:8px 10px; font-size: 0.78rem;">
+            <div style="display:flex; align-items:center; justify-content:space-between;">
+              <span>🔎 Trazando: <strong id="field-tracking-name" style="color:#fbbf24;"></strong></span>
+              <button id="btn-clear-field-tracking" class="btn btn-ghost" style="padding:2px 6px; font-size:0.72rem;">✕ Limpiar</button>
+            </div>
+            <div id="field-tracking-info" style="margin-top:4px; color: var(--text-muted);"></div>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 4px;" id="fields-list">
+            <p class="empty-text" style="padding: 8px 0;">Carga un proyecto o script para ver los campos disponibles.</p>
+          </div>
+        </div>
+
+        <!-- Vista 3: Física Obsidian -->
+        <div class="sidebar-content" id="view-physics" style="display: none;">
+          <div class="slider-control">
+            <div class="slider-header">
+              <span>Fuerza de Repulsión</span>
+              <span id="val-repulsion">260</span>
+            </div>
+            <input type="range" id="slider-repulsion" class="slider-input" min="50" max="600" value="260">
+          </div>
+
+          <div class="slider-control">
+            <div class="slider-header">
+              <span>Alineación Horizontal (Flujo I-D)</span>
+              <span id="val-horizontal">65%</span>
+            </div>
+            <input type="range" id="slider-horizontal" class="slider-input" min="10" max="100" value="65">
+          </div>
+
+          <div class="slider-control">
+            <div class="slider-header">
+              <span>Distancia de Enlaces</span>
+              <span id="val-distance">85</span>
+            </div>
+            <input type="range" id="slider-distance" class="slider-input" min="30" max="250" value="85">
+          </div>
+
+          <div class="slider-control">
+            <div class="slider-header">
+              <span>Atracción al Centro</span>
+              <span id="val-gravity">8%</span>
+            </div>
+            <input type="range" id="slider-gravity" class="slider-input" min="1" max="30" value="8">
+          </div>
+
+          <div class="filter-group" style="margin-top: 10px;">
+            <label style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; cursor: pointer;">
+              <input type="checkbox" id="check-curves" class="slider-input" checked>
+              <span>Curvas de conexión de flujo</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; cursor: pointer;">
+              <input type="checkbox" id="check-particles" class="slider-input" checked>
+              <span>Animar partículas de flujo de datos</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; cursor: pointer;">
+              <input type="checkbox" id="check-labels" class="slider-input" checked>
+              <span>Mostrar nombres en nodos</span>
+            </label>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Lienzo Principal del Grafo -->
+      <section id="graph-container">
+        <div class="node-search" id="node-search">
+          <div class="search-box">
+            <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input
+              type="search"
+              id="node-search-input"
+              class="search-input"
+              placeholder="Buscar nodo en el diagrama..."
+              aria-label="Buscar nodo en el diagrama"
+              autocomplete="off"
+              role="combobox"
+              aria-autocomplete="list"
+              aria-controls="node-search-results"
+              aria-expanded="false"
+            >
+          </div>
+          <div id="node-search-results" class="node-search-results" role="listbox" hidden></div>
+        </div>
+
+        <!-- Controles flotantes sobre el canvas -->
+        <div class="canvas-overlay-controls">
+          <button id="btn-toggle-layout" class="btn btn-primary" title="Alternar entre Flujo Izquierda-Derecha y Modo Libre">
+            ➡️ Flujo Izq ➔ Der
+          </button>
+          <button id="btn-reset-zoom" class="btn" title="Centrar cámara">🎯 Centrar</button>
+          <button id="btn-export-selection" class="btn" title="Haz clic para seleccionar un nodo; usa Ctrl/Cmd+clic para sumar o quitar nodos">
+            📤 Exportar selección JSON
+          </button>
+          <button id="btn-export-img" class="btn" title="Exportar imagen PNG del grafo">📷 Imagen PNG</button>
+        </div>
+
+        <!-- Banner de Etapas de Flujo (Izquierda a Derecha) -->
+        <div class="pipeline-flow-banner">
+          <span class="step" style="color: var(--color-other)">⬅️ Fuentes</span>
+          <span class="arrow">➔</span>
+          <span class="step" style="color: var(--color-stg)">STG</span>
+          <span class="arrow">➔</span>
+          <span class="step" style="color: var(--color-app)">Apps ETL</span>
+          <span class="arrow">➔</span>
+          <span class="step" style="color: var(--color-data)">DATAs</span>
+          <span class="arrow">➔</span>
+          <span class="step" style="color: #93c5fd">Consumidores BI ➡️</span>
+        </div>
+
+        <!-- Leyenda Flotante -->
+        <div class="legend-chips">
+          <div class="legend-item"><span class="color-dot dot-other"></span> Origen/Ext</div>
+          <div class="legend-item"><span class="color-dot dot-stg"></span> STG</div>
+          <div class="legend-item"><span class="color-dot dot-app"></span> App</div>
+          <div class="legend-item"><span class="color-dot dot-data"></span> DATA</div>
+        </div>
+
+        <!-- Estado de Bienvenida / Vacío -->
+        <div class="empty-state" id="empty-state">
+          <div class="empty-state-box">
+            <div class="empty-state-icon">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+              </svg>
+            </div>
+            <div>
+              <h2 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 6px;">Visualiza el Linaje de tu Qlik</h2>
+              <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.5;">
+                Arrastra tu archivo ZIP con <code>loadscript.json</code>, una carpeta de aplicaciones (incluye <code>.qvf</code>, <code>.qvs</code>, <code>.qvd</code>) o abre un proyecto existente para mapear el grafo de dependencias al estilo Obsidian.
+              </p>
+            </div>
+            <div class="empty-state-actions">
+              <button id="empty-btn-folder" class="btn btn-primary">📁 Seleccionar Carpeta</button>
+              <button id="empty-btn-zip" class="btn">📦 Seleccionar ZIP</button>
+              <button id="empty-btn-demo" class="btn btn-accent">⚡ Probar Demo</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Panel de Inspección Derecho (Linaje Detallado) -->
+      <aside class="inspector-panel" id="inspector-panel">
+        <div class="inspector-header">
+          <div class="inspector-title-area">
+            <span id="inspector-node-badge" class="node-type-badge badge-app">APP</span>
+            <h3 id="inspector-node-name" class="node-name-title">Nombre del Nodo</h3>
+          </div>
+          <button id="btn-close-inspector" class="btn btn-ghost" style="padding: 4px 8px;">✕</button>
+        </div>
+
+        <div class="inspector-body">
+          <!-- Impacto Rápido -->
+          <div id="inspector-impact-box" class="impact-box">
+            Análisis de Impacto
+          </div>
+
+          <!-- Sección Predecesores (Upstream) -->
+          <div class="lineage-section">
+            <span class="section-label">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="19" y1="12" x2="5" y2="12"></line>
+                <polyline points="12 19 5 12 12 5"></polyline>
+              </svg>
+              ¿Quién lo produce? (Predecesores)
+            </span>
+            <div id="inspector-upstream-list" class="lineage-list">
+              <!-- Elementos dinámicos -->
+            </div>
+          </div>
+
+          <!-- Sección Sucesores (Downstream) -->
+          <div class="lineage-section">
+            <span class="section-label">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+                <polyline points="12 5 19 12 12 19"></polyline>
+              </svg>
+              ¿Quién lo consume? (Sucesores)
+            </span>
+            <div id="inspector-downstream-list" class="lineage-list">
+              <!-- Elementos dinámicos -->
+            </div>
+          </div>
+
+          <!-- Sección Campos del Nodo -->
+          <div class="lineage-section" id="inspector-fields-section" style="display:none;">
+            <span class="section-label">
+              🔬 Campos del Nodo
+              <span id="inspector-fields-count" style="color:var(--text-dim); font-weight:normal;"></span>
+            </span>
+            <div class="search-box" style="margin-bottom: 6px;">
+              <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+              <input type="text" id="inspector-field-filter" class="search-input" placeholder="Filtrar campos..." style="font-size:0.78rem;">
+            </div>
+            <div id="inspector-fields-list" class="lineage-list" style="max-height: 220px; overflow-y: auto;">
+            </div>
+          </div>
+
+          <!-- Vista previa de código / rutas -->
+          <div class="lineage-section">
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+              <span class="section-label">📜 Información / Script</span>
+              <button id="btn-export-node-script" class="btn btn-ghost" style="display:none; padding:3px 8px; font-size:0.72rem;" title="Descargar el script completo de esta app como JSON">⬇️ Exportar JSON</button>
+            </div>
+            <div id="inspector-script-box" class="script-box"></div>
+          </div>
+        </div>
+      </aside>
+    </main>
+
+    <!-- Overlay de Drag & Drop -->
+    <div class="drop-overlay" id="drop-overlay">
+      <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--color-app)" stroke-width="2">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+        <polyline points="17 8 12 3 7 8"></polyline>
+        <line x1="12" y1="3" x2="12" y2="15"></line>
+      </svg>
+      <h3 class="drop-title">Suelta los archivos aquí</h3>
+      <p class="drop-desc">Archivos ZIP, .qvf, .qvs, .qvd, carpetas de scripts o proyectos .linaje</p>
+    </div>
+
+    <!-- Modal de Matriz Completa -->
+    <div class="modal-backdrop" id="modal-table">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h3 style="font-size: 1.1rem; font-weight: 600;">Matriz de Dependencias y Linaje</h3>
+          <div style="display: flex; gap: 8px;">
+            <button id="btn-export-csv" class="btn">📊 CSV</button>
+            <button id="btn-export-excel" class="btn">📗 Excel</button>
+            <button id="btn-export-json" class="btn">{ } JSON</button>
+            <button id="btn-export-ppt" class="btn btn-primary">📽️ PPT</button>
+            <button id="btn-close-table" class="btn btn-ghost">✕ Cerrar</button>
+          </div>
+        </div>
+        <div class="modal-body">
+          <label for="report-export-scope" style="display: flex; align-items: center; gap: 10px; margin-bottom: 14px; font-size: 0.85rem; color: var(--text-muted);">
+            Exportar
+            <select id="report-export-scope" class="search-input" style="width: auto; min-width: 250px;">
+              <option value="selected">Apps seleccionadas y su linaje</option>
+              <option value="all">Todo el proyecto</option>
+            </select>
+            <span>Incluye campos, datasets y dependencias. La PNG y la imagen del PPT capturan el grafo visible; usa «Todas» en el filtro de apps para incluir el total.</span>
+          </label>
+          <table class="table-responsive">
+            <thead>
+              <tr>
+                <th>Aplicación</th>
+                <th>Entradas Consumidas (FROM / STG / DATA)</th>
+                <th>Salidas Producidas (STORE)</th>
+                <th>Acción</th>
+              </tr>
+            </thead>
+            <tbody id="matrix-table-body">
+              <!-- Filas dinámicas -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Contenedor de Toasts -->
+    <div class="toast-container" id="toast-container"></div>
+  </div>
+
+  <!-- Bibliotecas de Proveedor (Locales con respaldo en línea) -->
+  <script src="vendor/d3.min.js"></script>
+  <script src="vendor/jszip.min.js"></script>
+  <script>
+    // Respaldo CDN si no cargaran localmente
+    if (typeof d3 === 'undefined') {
+      document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"><\/script>');
+    }
+    if (typeof JSZip === 'undefined') {
+      document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"><\/script>');
+    }
+  </script>
+
+  <!-- Lógica de la Aplicación -->
+  <script src="parser.js?v=20261021-full-lineage-export"></script>
+  <script src="graph.js?v=20261005-canvas-fit"></script>
+  <script src="app.js?v=20261020-export-formats"></script>
+</body>
+</html>
